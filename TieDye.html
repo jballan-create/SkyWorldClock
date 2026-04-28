@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tie-Dye Tycoon</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+        --neon-pink: #ff00ff;
+        --neon-green: #00ff88;
+        --bg-dark: #060410;
+        --panel-bg: #1a1a1a;
+    }
+
+    body {
+        min-height: 100vh;
+        background: var(--bg-dark);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Share Tech Mono', monospace;
+        color: #e0e0e0;
+        overflow: hidden;
+    }
+
+    /* Subtle Scanline Effect */
+    body::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px);
+        pointer-events: none;
+        z-index: 10;
+    }
+
+    #tiedye-module {
+        width: 100%;
+        max-width: 400px;
+        padding: 30px;
+        border: 1px solid #444;
+        background: var(--panel-bg);
+        border-radius: 4px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        z-index: 5;
+    }
+
+    h3 {
+        margin-top: 0;
+        margin-bottom: 20px;
+        color: var(--neon-pink);
+        text-align: center;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+    }
+
+    .td-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-bottom: 25px;
+        padding: 15px;
+        background: #222;
+        border: 1px inset #333;
+    }
+
+    .td-stats div {
+        font-size: 1rem;
+    }
+
+    .td-stats span {
+        color: var(--neon-green);
+        text-shadow: 0 0 5px rgba(0, 255, 136, 0.5);
+    }
+
+    .td-btn {
+        width: 100%;
+        padding: 12px;
+        margin-bottom: 10px;
+        background: #333;
+        color: #fff;
+        border: 1px solid #555;
+        font-family: 'Share Tech Mono', monospace;
+        cursor: pointer;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        transition: all 0.2s;
+    }
+
+    .td-btn:hover {
+        background: #444;
+        border-color: #888;
+        color: var(--neon-green);
+    }
+
+    .td-btn:active {
+        background: #111;
+        transform: translateY(1px);
+    }
+
+    #td-log {
+        font-size: 0.85rem;
+        color: #888;
+        margin-top: 15px;
+        text-align: center;
+        height: 1.2em;
+        border-top: 1px solid #333;
+        padding-top: 10px;
+    }
+</style>
+</head>
+<body>
+
+<div id="tiedye-module">
+    <h3>🌈 TIE-DYE TYCOON</h3>
+    
+    <div class="td-stats">
+        <div>CASH: $<span id="td-cash">20</span></div>
+        <div>DYE: <span id="td-dye">5</span></div>
+        <div>SHIRTS: <span id="td-shirts">0</span></div>
+        <div>STOCK: <span id="td-stock">0</span></div>
+    </div>
+
+    <button class="td-btn" onclick="tdBuy()">Order Supplies ($10)</button>
+    <button class="td-btn" onclick="tdCraft()">Process Batch</button>
+    <button class="td-btn" onclick="tdSell()">Liquidate Stock ($15)</button>
+
+    <div id="td-log">> SYSTEM READY</div>
+</div>
+
+<script>
+    const tdState = {
+        cash: 20,
+        dye: 5,
+        shirts: 0,
+        stock: 0
+    };
+
+    function tdUpdate() {
+        document.getElementById('td-cash').innerText = tdState.cash;
+        document.getElementById('td-dye').innerText = tdState.dye;
+        document.getElementById('td-shirts').innerText = tdState.shirts;
+        document.getElementById('td-stock').innerText = tdState.stock;
+    }
+
+    function tdMsg(text) {
+        document.getElementById('td-log').innerText = "> " + text;
+    }
+
+    function tdBuy() {
+        if (tdState.cash >= 10) {
+            tdState.cash -= 10;
+            tdState.shirts += 3;
+            tdState.dye += 3;
+            tdMsg("SUPPLIES ACQUIRED");
+            tdUpdate();
+        } else {
+            tdMsg("INSUFFICIENT FUNDS");
+        }
+    }
+
+    function tdCraft() {
+        if (tdState.shirts > 0 && tdState.dye > 0) {
+            tdState.shirts--;
+            tdState.dye--;
+            tdState.stock++;
+            tdMsg("BATCH PROCESSED");
+            tdUpdate();
+        } else {
+            tdMsg("RESOURCES DEPLETED");
+        }
+    }
+
+    function tdSell() {
+        if (tdState.stock > 0) {
+            tdState.stock--;
+            tdState.cash += 15;
+            tdMsg("STOCK LIQUIDATED (+$15)");
+            tdUpdate();
+        } else {
+            tdMsg("NO INVENTORY");
+        }
+    }
+
+    // Initialize
+    tdUpdate();
+</script>
+
+</body>
+</html>
