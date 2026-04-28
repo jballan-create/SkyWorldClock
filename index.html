@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WORKSHOP // HUB</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap');
+
+/* ─── Config ─────────────────────────────────────────────────────────
+   These are auto-detected from your GitHub Pages URL.
+   Only set them manually if you're running locally or using a custom domain.
+   ─────────────────────────────────────────────────────────────────── */
+:root {
+  --green:  #00ff88;
+  --dim:    #00cc66;
+  --faint:  rgba(0,255,136,0.15);
+  --bg:     #060410;
+  --card-size: min(92vw, 560px);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  font-family: 'Share Tech Mono', monospace;
+  color: var(--green);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* scanlines */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* ambient glow */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 30%, rgba(60,10,90,0.35) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 70%, rgba(0,50,80,0.25) 0%, transparent 55%);
+  pointer-events: none;
+}
+
+/* ─── Layout ─────────────────────────────────────────────────────── */
+#hub {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  width: var(--card-size);
+}
+
+/* ─── Header ─────────────────────────────────────────────────────── */
+#header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(0,255,136,0.05);
+  border: 1px solid rgba(0,255,136,0.25);
+  border-bottom: none;
+  user-select: none;
+}
+
+#project-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(10px, 2.5vw, 14px);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--green);
+  text-shadow: 0 0 12px rgba(0,255,136,0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70%;
+}
+
+#counter {
+  font-size: 11px;
+  color: rgba(0,255,136,0.4);
+  letter-spacing: 0.08em;
+  flex-shrink: 0;
+}
+
+/* ─── Viewport (iframe wrapper) ──────────────────────────────────── */
+#viewport {
+  width: 100%;
+  height: var(--card-size);
+  position: relative;
+  border: 1px solid rgba(0,255,136,0.25);
+  overflow: hidden;
+  background: #0d0920;
+}
+
+#project-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+  background: transparent;
+}
+
+/* Loading overlay */
+#loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #0d0920;
+  gap: 16px;
+  transition: opacity 0.3s;
+}
+#loading.hidden { opacity: 0; pointer-events: none; }
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 2px solid rgba(0,255,136,0.15);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#loading-label {
+  font-size: 11px;
+  color: rgba(0,255,136,0.4);
+  letter-spacing: 0.1em;
+}
+
+/* Empty/error state */
+#empty {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: rgba(0,255,136,0.3);
+  font-size: 12px;
+  letter-spacing: 0.07em;
+  text-align: center;
+  padding: 24px;
+}
+#empty.visible { display: flex; }
+#empty a { color: var(--green); }
+
+/* ─── Nav bar ────────────────────────────────────────────────────── */
+#nav {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0;
+  border: 1px solid rgba(0,255,136,0.25);
+  border-top: 1px solid rgba(0,255,136,0.1);
+  background: rgba(0,255,136,0.03);
+}
+
+.nav-btn {
+  background: none;
+  border: none;
+  color: var(--green);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 20px;
+  padding: 10px 22px;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.nav-btn:hover { background: rgba(0,255,136,0.1); }
+.nav-btn:active { background: rgba(0,255,136,0.2); }
+.nav-btn:disabled { color: rgba(0,255,136,0.15); cursor: default; }
+.nav-btn:disabled:hover { background: none; }
+
+/* Dot indicators */
+#dots {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0 4px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(0,255,136,0.2);
+  flex-shrink: 0;
+  transition: background 0.2s, transform 0.2s;
+  cursor: pointer;
+}
+.dot.active {
+  background: var(--green);
+  transform: scale(1.35);
+  box-shadow: 0 0 6px rgba(0,255,136,0.6);
+}
+.dot:hover { background: rgba(0,255,136,0.5); }
+
+/* ─── Footer ─────────────────────────────────────────────────────── */
+#footer {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  font-size: 9px;
+  color: rgba(0,255,136,0.2);
+  letter-spacing: 0.06em;
+}
+
+#open-btn {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: rgba(0,255,136,0.35);
+  background: none;
+  border: none;
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 0;
+  transition: color 0.15s;
+}
+#open-btn:hover { color: var(--green); }
+</style>
+</head>
+<body>
+
+<div id="hub">
+  <div id="header">
+    <div id="project-name">SCANNING…</div>
+    <div id="counter">—/—</div>
+  </div>
+
+  <div id="viewport">
+    <iframe id="project-frame"
+      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+      title="Project preview">
+    </iframe>
+
+    <div id="loading">
+      <div class="spinner"></div>
+      <div id="loading-label">FETCHING MANIFEST…</div>
+    </div>
+
+    <div id="empty">
+      <div>NO PROJECTS FOUND</div>
+      <div style="font-size:10px; margin-top:4px; opacity:0.7;">
+        Add <code>.html</code> files to your repo root.<br>
+        They will appear here automatically.
+      </div>
+      <div id="empty-debug" style="font-size:9px; margin-top:8px; opacity:0.4;"></div>
+    </div>
+  </div>
+
+  <div id="nav">
+    <button class="nav-btn" id="prev-btn" onclick="navigate(-1)">←</button>
+    <div id="dots"></div>
+    <button class="nav-btn" id="next-btn" onclick="navigate(1)">→</button>
+  </div>
+
+  <div id="footer">
+    <span id="footer-file"></span>
+    <button id="open-btn" onclick="openCurrent()">↗ open</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  MANUAL OVERRIDE — only needed for local dev or custom domains.
+//  Leave both empty for auto-detect on GitHub Pages.
+// ═══════════════════════════════════════════════════════════════════
+const MANUAL_USER = '';   // e.g. 'githubuser'
+const MANUAL_REPO = '';   // e.g. 'my-projects'
+
+const EXCLUDE = new Set(['index.html', '404.html']);
+
+// ═══════════════════════════════════════════════════════════════════
+//  AUTO-DETECT GITHUB USER + REPO
+// ═══════════════════════════════════════════════════════════════════
+function detectGitHub() {
+  if (MANUAL_USER && MANUAL_REPO) return { user: MANUAL_USER, repo: MANUAL_REPO };
+  const host = window.location.hostname;
+  const path = window.location.pathname;
+  if (host.endsWith('.github.io')) {
+    const user = host.replace('.github.io', '');
+    const parts = path.split('/').filter(Boolean);
+    const repo = parts.length > 0 ? parts[0] : `${user}.github.io`;
+    return { user, repo };
+  }
+  return null;
+}
+
+let projects = [];
+let current = 0;
+
+// ═══════════════════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════════════════
+async function boot() {
+  const gh = detectGitHub();
+  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+  try {
+    // Logic: Use API if on GitHub Pages. Use Manifest if local or if API fails.
+    if (gh && !isLocal) {
+      await loadFromAPI(gh);
+    } else {
+      await loadFromManifest();
+    }
+  } catch (err) {
+    showEmpty(`Error: ${err.message}`);
+    return;
+  }
+
+  if (projects.length === 0) {
+    showEmpty(gh
+      ? `No .html files found in ${gh.user}/${gh.repo}.`
+      : 'Local mode: projects.json not found or empty.');
+    return;
+  }
+
+  buildDots();
+  goto(0);
+}
+
+// ─── Load from GitHub API ─────────────────────────────────────────
+async function loadFromAPI({ user, repo }) {
+  setLoadingLabel('SCANNING REPO…');
+  
+  let meta = {};
+  try {
+    const mRes = await fetch(`https://raw.githubusercontent.com/${user}/${repo}/main/projects.json`);
+    if (mRes.ok) {
+      const arr = await mRes.json();
+      arr.forEach(p => { meta[p.file] = p; });
+    }
+  } catch (_) {}
+
+  const apiUrl = `https://api.github.com/repos/${user}/${repo}/contents/`;
+  const res = await fetch(apiUrl, { headers: { Accept: 'application/vnd.github.v3+json' } });
+
+  if (!res.ok) throw new Error(`GitHub API Error: ${res.status}`);
+
+  const files = await res.json();
+  const basePath = window.location.origin + window.location.pathname;
+  const cleanPath = basePath.endsWith('/') ? basePath : basePath + '/';
+
+  projects = files
+    .filter(f => f.type === 'file' && f.name.endsWith('.html') && !EXCLUDE.has(f.name))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map(f => ({
+      file: f.name,
+      url:  cleanPath + f.name,
+      name: meta[f.name]?.name || fileToTitle(f.name),
+      desc: meta[f.name]?.desc || '',
+    }));
+}
+
+// ─── Load from Manifest (Local) ───────────────────────────────────
+async function loadFromManifest() {
+  setLoadingLabel('LOADING LOCAL MANIFEST…');
+  const res = await fetch('projects.json');
+  if (!res.ok) throw new Error('Local projects.json missing.');
+  const arr = await res.json();
+  projects = arr.map(p => ({
+    file: p.file,
+    url:  p.file,
+    name: p.name || fileToTitle(p.file),
+    desc: p.desc || '',
+  }));
+}
+
+// ─── Navigation ───────────────────────────────────────────────────
+function navigate(dir) {
+  if (projects.length === 0) return;
+  goto((current + dir + projects.length) % projects.length);
+}
+
+function goto(index) {
+  current = index;
+  const p = projects[index];
+
+  document.getElementById('project-name').textContent = p.name.toUpperCase();
+  document.getElementById('counter').textContent = `${index + 1}/${projects.length}`;
+  document.getElementById('footer-file').textContent = p.file;
+
+  document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === index));
+
+  showLoading();
+  const frame = document.getElementById('project-frame');
+  frame.onload = hideLoading;
+  frame.src = p.url;
+}
+
+function openCurrent() {
+  if (projects[current]) window.open(projects[current].url, '_blank');
+}
+
+// ─── UI Helpers ───────────────────────────────────────────────────
+function fileToTitle(f) {
+  return f.replace('.html', '').replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function setLoadingLabel(t) { document.getElementById('loading-label').textContent = t; }
+
+function showEmpty(msg) {
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('empty').classList.add('visible');
+  document.getElementById('empty-debug').textContent = msg;
+}
+
+function showLoading() { document.getElementById('loading').classList.remove('hidden'); }
+function hideLoading() { document.getElementById('loading').classList.add('hidden'); }
+
+function buildDots() {
+  const dotsEl = document.getElementById('dots');
+  dotsEl.innerHTML = '';
+  if (projects.length > 20) {
+    dotsEl.style.fontSize = '10px';
+    dotsEl.style.color = 'rgba(0,255,136,0.3)';
+    dotsEl.textContent = '— use arrows —';
+    return;
+  }
+  projects.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot';
+    d.onclick = () => goto(i);
+    dotsEl.appendChild(d);
+  });
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft')  navigate(-1);
+  if (e.key === 'ArrowRight') navigate(1);
+});
+
+boot();
+</script>
+</body>
+</html>
