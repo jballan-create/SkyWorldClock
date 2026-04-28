@@ -342,13 +342,13 @@ for (const [region, cities] of Object.entries(CITIES)) {
     const opt = document.createElement('option');
     opt.value = JSON.stringify(city);
     opt.textContent = city.name;
-    if (city.name === 'Ottawa, ON') opt.selected = true;
+    if (city.name === 'Whitehorse, YT') opt.selected = true;
     grp.appendChild(opt);
   }
   select.appendChild(grp);
 }
 
-let currentCity = CITIES["Canada"].find(c => c.name === 'Ottawa, ON') || CITIES["Canada"][0];
+let currentCity = CITIES["Canada"].find(c => c.name === 'Whitehorse, YT') || CITIES["Canada"][0];
 
 function applyCity(city) {
   currentCity = city;
