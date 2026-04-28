@@ -536,13 +536,21 @@ canvas.addEventListener('click', () => {
 
 liveTick();
 </script>
-  <style>
+<style>
+    /* This wrapper ensures the game drops below the clock */
+    #tiedye-position-wrapper {
+        display: block; 
+        clear: both; 
+        width: 100%;
+        padding-top: 20px; /* Gives it some breathing room from the clock */
+    }
+
     #tiedye-module {
         max-width: 450px;
-        margin: 20px 0;
+        /* margin: 0 auto;  <-- Uncomment this if you want it centered */
         padding: 20px;
         border: 1px solid #444;
-        background: #1a1a1a; /* Darker background to match technical tools */
+        background: #1a1a1a;
         color: #e0e0e0;
         font-family: 'Courier New', Courier, monospace;
         border-radius: 4px;
@@ -558,34 +566,21 @@ liveTick();
         border: 1px inset #333;
     }
 
-    .td-stats div {
-        font-size: 0.9rem;
-    }
-
-    .td-stats span {
-        color: #00ff00; /* Retro terminal green for values */
-    }
+    .td-stats span { color: #00ff00; }
 
     .td-btn {
         width: 100%;
-        padding: 10px;
+        padding: 12px;
         margin-bottom: 8px;
         background: #333;
         color: #fff;
         border: 1px solid #555;
         cursor: pointer;
         text-transform: uppercase;
-        letter-spacing: 1px;
+        font-weight: bold;
     }
 
-    .td-btn:hover {
-        background: #444;
-        border-color: #888;
-    }
-
-    .td-btn:active {
-        background: #222;
-    }
+    .td-btn:hover { background: #444; border-color: #888; }
 
     #td-log {
         font-size: 0.8rem;
