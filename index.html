@@ -288,17 +288,12 @@ body::before {
 
 <script>
 // ═══════════════════════════════════════════════════════════════════
-//  MANUAL OVERRIDE — only needed for local dev or custom domains.
-//  Leave both empty for auto-detect on GitHub Pages.
+//  CONFIG
 // ═══════════════════════════════════════════════════════════════════
 const MANUAL_USER = 'jballan-create';
 const MANUAL_REPO = 'SkyWorldClock';
-
 const EXCLUDE = new Set(['index.html', '404.html', 'backupoldindex.html']);
 
-// ═══════════════════════════════════════════════════════════════════
-//  AUTO-DETECT GITHUB USER + REPO
-// ═══════════════════════════════════════════════════════════════════
 function detectGitHub() {
   if (MANUAL_USER && MANUAL_REPO) return { user: MANUAL_USER, repo: MANUAL_REPO };
   const host = window.location.hostname;
@@ -315,29 +310,24 @@ function detectGitHub() {
 let projects = [];
 let current = 0;
 
-// ═══════════════════════════════════════════════════════════════════
-//  BOOT
-// ═══════════════════════════════════════════════════════════════════
 async function boot() {
   const gh = detectGitHub();
-  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
+  
   try {
-    // Logic: Use API if on GitHub Pages. Use Manifest if local or if API fails.
-    if (gh && !isLocal) {
+    // Attempt to load from GitHub API first if we have the info
+    if (gh) {
       await loadFromAPI(gh);
     } else {
       await loadFromManifest();
     }
   } catch (err) {
+    console.error(err);
     showEmpty(`Error: ${err.message}`);
     return;
   }
 
   if (projects.length === 0) {
-    showEmpty(gh
-      ? `No .html files found in ${gh.user}/${gh.repo}.`
-      : 'Local mode: projects.json not found or empty.');
+    showEmpty('No .html projects found in root.');
     return;
   }
 
@@ -345,97 +335,75 @@ async function boot() {
   goto(0);
 }
 
-// ─── Load from GitHub API ─────────────────────────────────────────
 async function loadFromAPI({ user, repo }) {
   setLoadingLabel('SCANNING REPO…');
-  
-  let meta = {};
-  try {
-    // We use the raw.githubusercontent URL to get your projects.json if it exists
-    const mRes = await fetch(`https://raw.githubusercontent.com/${user}/${repo}/main/projects.json`);
-    if (mRes.ok) {
-      const arr = await mRes.json();
-      arr.forEach(p => { meta[p.file] = p; });
-    }
-  } catch (_) {}
-
   const apiUrl = `https://api.github.com/repos/${user}/${repo}/contents/`;
-  const res = await fetch(apiUrl, { headers: { Accept: 'application/vnd.github.v3+json' } });
+  const res = await fetch(apiUrl);
 
-  if (!res.ok) {
-    if (res.status === 403) throw new Error("GitHub API Rate Limit Hit. Try again in an hour or use a projects.json.");
-    throw new Error(`GitHub API Error: ${res.status}`);
-  }
+  if (!res.ok) throw new Error(`GitHub API Error: ${res.status}`);
 
   const files = await res.json();
-  
-  // FIX: Instead of guessing the path from the URL, we build it relative to the current page.
-  // Since index.html is in your root, "filename.html" is the correct relative path.
   projects = files
     .filter(f => f.type === 'file' && f.name.endsWith('.html') && !EXCLUDE.has(f.name))
-    .sort((a, b) => a.name.localeCompare(b.name))
     .map(f => ({
       file: f.name,
-      // Using './' ensures it looks in the same folder as index.html
       url:  './' + f.name, 
-      name: meta[f.name]?.name || fileToTitle(f.name),
-      desc: meta[f.name]?.desc || '',
+      name: fileToTitle(f.name)
     }));
 }
 
-// ─── Load from Manifest (Local) ───────────────────────────────────
 async function loadFromManifest() {
   setLoadingLabel('LOADING LOCAL MANIFEST…');
-  const res = await fetch('projects.json');
-  if (!res.ok) throw new Error('Local projects.json missing.');
-  const arr = await res.json();
-  projects = arr.map(p => ({
-    file: p.file,
-    url:  p.file,
-    name: p.name || fileToTitle(p.file),
-    desc: p.desc || '',
-  }));
-}
-
-// ─── Navigation ───────────────────────────────────────────────────
-function navigate(dir) {
-  if (projects.length === 0) return;
-  goto((current + dir + projects.length) % projects.length);
+  try {
+    const res = await fetch('projects.json');
+    if (!res.ok) throw new Error();
+    const arr = await res.json();
+    projects = arr.map(p => ({
+      file: p.file,
+      url:  p.file,
+      name: p.name || fileToTitle(p.file)
+    }));
+  } catch (e) {
+    throw new Error('projects.json not found. If running locally, please create it.');
+  }
 }
 
 function goto(index) {
+  if (projects.length === 0) return;
   current = index;
   const p = projects[index];
 
-  document.getElementById('project-name').textContent = p.name.toUpperCase();
+  // FIXED IDs: Matches your HTML (id="-name" and id="-frame")
+  document.getElementById('-name').textContent = p.name.toUpperCase();
   document.getElementById('counter').textContent = `${index + 1}/${projects.length}`;
   document.getElementById('footer-file').textContent = p.file;
 
   document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === index));
 
   showLoading();
-  const frame = document.getElementById('project-frame');
+  const frame = document.getElementById('-frame');
   frame.onload = hideLoading;
   frame.src = p.url;
+}
+
+function navigate(dir) {
+  goto((current + dir + projects.length) % projects.length);
 }
 
 function openCurrent() {
   if (projects[current]) window.open(projects[current].url, '_blank');
 }
 
-// ─── UI Helpers ───────────────────────────────────────────────────
 function fileToTitle(f) {
   return f.replace('.html', '').replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
 function setLoadingLabel(t) { document.getElementById('loading-label').textContent = t; }
-
 function showEmpty(msg) {
   document.getElementById('loading').classList.add('hidden');
   document.getElementById('empty').classList.add('visible');
   document.getElementById('empty-debug').textContent = msg;
 }
-
 function showLoading() { document.getElementById('loading').classList.remove('hidden'); }
 function hideLoading() { document.getElementById('loading').classList.add('hidden'); }
 
@@ -443,9 +411,7 @@ function buildDots() {
   const dotsEl = document.getElementById('dots');
   dotsEl.innerHTML = '';
   if (projects.length > 20) {
-    dotsEl.style.fontSize = '10px';
-    dotsEl.style.color = 'rgba(0,255,136,0.3)';
-    dotsEl.textContent = '— use arrows —';
+    dotsEl.textContent = '—';
     return;
   }
   projects.forEach((_, i) => {
@@ -455,11 +421,6 @@ function buildDots() {
     dotsEl.appendChild(d);
   });
 }
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowLeft')  navigate(-1);
-  if (e.key === 'ArrowRight') navigate(1);
-});
 
 boot();
 </script>
