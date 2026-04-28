@@ -351,6 +351,7 @@ async function loadFromAPI({ user, repo }) {
   
   let meta = {};
   try {
+    // We use the raw.githubusercontent URL to get your projects.json if it exists
     const mRes = await fetch(`https://raw.githubusercontent.com/${user}/${repo}/main/projects.json`);
     if (mRes.ok) {
       const arr = await mRes.json();
@@ -361,18 +362,21 @@ async function loadFromAPI({ user, repo }) {
   const apiUrl = `https://api.github.com/repos/${user}/${repo}/contents/`;
   const res = await fetch(apiUrl, { headers: { Accept: 'application/vnd.github.v3+json' } });
 
-  if (!res.ok) throw new Error(`GitHub API Error: ${res.status}`);
+  if (!res.ok) {
+    if (res.status === 403) throw new Error("GitHub API Rate Limit Hit. Try again in an hour or use a projects.json.");
+    throw new Error(`GitHub API Error: ${res.status}`);
+  }
 
   const files = await res.json();
-  const basePath = window.location.origin + window.location.pathname;
-  const cleanPath = basePath.endsWith('/') ? basePath : basePath + '/';
-
+  
+  // FIX: Instead of guessing the path from the URL, we build it relative to the current page.
+  // Since index.html is in your root, "filename.html" is the correct relative path.
   projects = files
     .filter(f => f.type === 'file' && f.name.endsWith('.html') && !EXCLUDE.has(f.name))
     .sort((a, b) => a.name.localeCompare(b.name))
     .map(f => ({
       file: f.name,
-      url:  cleanPath + f.name,
+      url:  f.name, // Just use the filename. If it's in the same folder, it works perfectly.
       name: meta[f.name]?.name || fileToTitle(f.name),
       desc: meta[f.name]?.desc || '',
     }));
