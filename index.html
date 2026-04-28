@@ -75,7 +75,7 @@ body::before {
   user-select: none;
 }
 
-#project-name {
+#-name {
   font-family: 'Orbitron', sans-serif;
   font-size: clamp(10px, 2.5vw, 14px);
   font-weight: 700;
@@ -105,7 +105,7 @@ body::before {
   background: #0d0920;
 }
 
-#project-frame {
+#-frame {
   width: 100%;
   height: 100%;
   border: none;
@@ -249,14 +249,14 @@ body::before {
 
 <div id="hub">
   <div id="header">
-    <div id="project-name">SCANNING…</div>
+    <div id="-name">SCANNING…</div>
     <div id="counter">—/—</div>
   </div>
 
   <div id="viewport">
-    <iframe id="project-frame"
+    <iframe id="-frame"
       sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-      title="Project preview">
+      title=" preview">
     </iframe>
 
     <div id="loading">
@@ -376,7 +376,8 @@ async function loadFromAPI({ user, repo }) {
     .sort((a, b) => a.name.localeCompare(b.name))
     .map(f => ({
       file: f.name,
-      url:  f.name, // Just use the filename. If it's in the same folder, it works perfectly.
+      // Using './' ensures it looks in the same folder as index.html
+      url:  './' + f.name, 
       name: meta[f.name]?.name || fileToTitle(f.name),
       desc: meta[f.name]?.desc || '',
     }));
