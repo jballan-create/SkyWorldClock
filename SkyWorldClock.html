@@ -152,6 +152,11 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
 <script>
+  // --- CONFIGURATION ---
+const APP_CONFIG = {
+  defaultCityName: "Ottawa, ON",
+  defaultRegion: "Canada"
+};
 const CITIES = {
   "Canada": [
     { name:"Whitehorse, YT",          lat:60.7128,  lon:-135.0568, tz:"Canada/Yukon" },
@@ -342,13 +347,14 @@ for (const [region, cities] of Object.entries(CITIES)) {
     const opt = document.createElement('option');
     opt.value = JSON.stringify(city);
     opt.textContent = city.name;
-    if (city.name === 'Whitehorse, YT') opt.selected = true;
+    if (city.name === APP_CONFIG.defaultCityName) opt.selected = true;
     grp.appendChild(opt);
   }
   select.appendChild(grp);
 }
 
-let currentCity = CITIES["Canada"].find(c => c.name === 'Whitehorse, YT') || CITIES["Canada"][0];
+let currentCity = CITIES[APP_CONFIG.defaultRegion].find(c => c.name === APP_CONFIG.defaultCityName) 
+                  || CITIES["Canada"][0];
 
 function applyCity(city) {
   currentCity = city;
