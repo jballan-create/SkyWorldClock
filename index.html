@@ -590,78 +590,42 @@ liveTick();
     }
 </style>
 
-<div id="tiedye-module">
-    <h3 style="margin-top: 0; color: #ff00ff;">🌈 TIE-DYE TYCOON</h3>
+<div style="clear: both; display: block; width: 100%; max-width: 400px; margin-top: 30px; padding: 15px; background: rgba(30, 30, 30, 0.8); border: 1px solid #444; border-radius: 4px; font-family: monospace;">
     
-    <div class="td-stats">
-        <div>CASH: $<span id="td-cash">20</span></div>
-        <div>DYE: <span id="td-dye">5</span></div>
-        <div>SHIRTS: <span id="td-shirts">0</span></div>
-        <div>STOCK: <span id="td-stock">0</span></div>
+    <h3 style="margin: 0 0 10px 0; color: #ff00ff; font-size: 1.1rem;">🌈 TIE-DYE TYCOON</h3>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 15px; padding: 10px; background: #000; border: 1px inset #333; font-size: 0.85rem; color: #ccc;">
+        <div>CASH: <span id="td-cash" style="color: #00ff00;">20</span></div>
+        <div>DYE: <span id="td-dye" style="color: #00ff00;">5</span></div>
+        <div>SHIRTS: <span id="td-shirts" style="color: #00ff00;">0</span></div>
+        <div>STOCK: <span id="td-stock" style="color: #00ff00;">0</span></div>
     </div>
 
-    <button class="td-btn" onclick="tdBuy()">Order Supplies ($10)</button>
-    <button class="td-btn" onclick="tdCraft()">Process Batch</button>
-    <button class="td-btn" onclick="tdSell()">Liquidate Stock ($15)</button>
+    <button onclick="tdBuy()" style="width: 100%; margin-bottom: 5px; padding: 8px; background: #333; color: #fff; border: 1px solid #555; cursor: pointer; font-family: monospace;">BUY SUPPLIES ($10)</button>
+    <button onclick="tdCraft()" style="width: 100%; margin-bottom: 5px; padding: 8px; background: #333; color: #fff; border: 1px solid #555; cursor: pointer; font-family: monospace;">CRAFT SHIRT</button>
+    <button onclick="tdSell()" style="width: 100%; margin-bottom: 10px; padding: 8px; background: #333; color: #fff; border: 1px solid #555; cursor: pointer; font-family: monospace;">SELL SHIRT ($15)</button>
 
-    <div id="td-log">> SYSTEM READY</div>
+    <div id="td-log" style="font-size: 0.75rem; color: #777;">> SYSTEM IDLE</div>
 </div>
 
 <script>
-    const tdState = {
-        cash: 20,
-        dye: 5,
-        shirts: 0,
-        stock: 0
-    };
-
+    // These functions are namespaced with 'td' so they won't clash with your clock scripts
+    const tdState = { cash: 20, dye: 5, shirts: 0, stock: 0 };
     function tdUpdate() {
         document.getElementById('td-cash').innerText = tdState.cash;
         document.getElementById('td-dye').innerText = tdState.dye;
         document.getElementById('td-shirts').innerText = tdState.shirts;
         document.getElementById('td-stock').innerText = tdState.stock;
     }
-
-    function tdMsg(text) {
-        document.getElementById('td-log').innerText = "> " + text;
-    }
-
     function tdBuy() {
-        if (tdState.cash >= 10) {
-            tdState.cash -= 10;
-            tdState.shirts += 3;
-            tdState.dye += 3;
-            tdMsg("SUPPLIES ACQUIRED");
-            tdUpdate();
-        } else {
-            tdMsg("INSUFFICIENT FUNDS");
-        }
+        if (tdState.cash >= 10) { tdState.cash -= 10; tdState.shirts += 3; tdState.dye += 3; tdUpdate(); }
     }
-
     function tdCraft() {
-        if (tdState.shirts > 0 && tdState.dye > 0) {
-            tdState.shirts--;
-            tdState.dye--;
-            tdState.stock++;
-            tdMsg("BATCH PROCESSED");
-            tdUpdate();
-        } else {
-            tdMsg("RESOURCES DEPLETED");
-        }
+        if (tdState.shirts > 0 && tdState.dye > 0) { tdState.shirts--; tdState.dye--; tdState.stock++; tdUpdate(); }
     }
-
     function tdSell() {
-        if (tdState.stock > 0) {
-            tdState.stock--;
-            tdState.cash += 15;
-            tdMsg("STOCK LIQUIDATED (+$15)");
-            tdUpdate();
-        } else {
-            tdMsg("NO INVENTORY");
-        }
+        if (tdState.stock > 0) { tdState.stock--; tdState.cash += 15; tdUpdate(); }
     }
-
-    // Initialize display on load
     tdUpdate();
 </script>
 </body>
