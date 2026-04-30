@@ -21,16 +21,18 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
-  height: 100%;
+  min-height: 100%;
   background: var(--bg);
   font-family: 'Share Tech Mono', monospace;
   color: var(--green);
-  overflow: hidden;
+  overflow-y: auto;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  padding: 32px 0 48px;
 }
 
+/* scanlines */
 body::after {
   content: '';
   position: fixed;
@@ -40,6 +42,7 @@ body::after {
   z-index: 100;
 }
 
+/* ambient glow */
 body::before {
   content: '';
   position: fixed;
@@ -50,6 +53,7 @@ body::before {
   pointer-events: none;
 }
 
+/* ─── Layout ─────────────────────────────────────────────────────── */
 #hub {
   display: flex;
   flex-direction: column;
@@ -58,6 +62,7 @@ body::before {
   width: var(--card-size);
 }
 
+/* ─── Header ─────────────────────────────────────────────────────── */
 #header {
   width: 100%;
   display: flex;
@@ -90,26 +95,30 @@ body::before {
   flex-shrink: 0;
 }
 
+/* ─── Viewport ───────────────────────────────────────────────────── */
 #viewport {
   width: 100%;
-  height: var(--card-size);
   position: relative;
   border: 1px solid rgba(0,255,136,0.25);
-  overflow: hidden;
   background: #0d0920;
+  /* no fixed height — grows with iframe content */
 }
 
 #-frame {
   width: 100%;
-  height: 100%;
+  height: 0; /* set dynamically by JS */
+  min-height: 300px;
   border: none;
   display: block;
   background: transparent;
+  overflow: hidden;
 }
 
+/* Loading overlay */
 #loading {
   position: absolute;
   inset: 0;
+  min-height: 300px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -117,6 +126,7 @@ body::before {
   background: #0d0920;
   gap: 16px;
   transition: opacity 0.3s;
+  z-index: 10;
 }
 #loading.hidden { opacity: 0; pointer-events: none; }
 
@@ -136,9 +146,11 @@ body::before {
   letter-spacing: 0.1em;
 }
 
+/* Empty/error state */
 #empty {
   position: absolute;
   inset: 0;
+  min-height: 300px;
   display: none;
   flex-direction: column;
   align-items: center;
@@ -153,6 +165,7 @@ body::before {
 #empty.visible { display: flex; }
 #empty a { color: var(--green); }
 
+/* ─── Nav bar ────────────────────────────────────────────────────── */
 #nav {
   width: 100%;
   display: flex;
@@ -182,6 +195,7 @@ body::before {
 .nav-btn:disabled { color: rgba(0,255,136,0.15); cursor: default; }
 .nav-btn:disabled:hover { background: none; }
 
+/* Dot indicators */
 #dots {
   display: flex;
   align-items: center;
@@ -208,6 +222,7 @@ body::before {
 }
 .dot:hover { background: rgba(0,255,136,0.5); }
 
+/* ─── Footer ─────────────────────────────────────────────────────── */
 #footer {
   width: 100%;
   display: flex;
@@ -293,12 +308,53 @@ const MANUAL_REPO = 'SkyWorldClock';
 const EXCLUDE = new Set(['index.html', '404.html', 'backupoldindex.html']);
 
 let projects = [];
-let current = 0;
+let current  = 0;
+let _resizeObserver = null;
 
+// ═══════════════════════════════════════════════════════════════════
+//  IFRAME AUTO-RESIZE
+//  Reads the iframe document height and stretches the frame to fit,
+//  so the outer page scrolls instead of the iframe.
+// ═══════════════════════════════════════════════════════════════════
+function autoResizeFrame() {
+  const frame = document.getElementById('-frame');
+  try {
+    const doc  = frame.contentDocument || frame.contentWindow.document;
+    const body = doc.body;
+    const html = doc.documentElement;
+
+    // Force iframe body to not scroll internally
+    body.style.overflow = 'hidden';
+    html.style.overflow = 'hidden';
+
+    const height = Math.max(
+      body.scrollHeight, body.offsetHeight,
+      html.scrollHeight, html.offsetHeight
+    );
+
+    frame.style.height = Math.max(height, 300) + 'px';
+
+    // Watch for dynamic content changes (canvas draws, animations settling)
+    if (_resizeObserver) _resizeObserver.disconnect();
+    _resizeObserver = new ResizeObserver(() => {
+      const h = Math.max(
+        body.scrollHeight, body.offsetHeight,
+        html.scrollHeight, html.offsetHeight
+      );
+      frame.style.height = Math.max(h, 300) + 'px';
+    });
+    _resizeObserver.observe(body);
+
+  } catch (e) {
+    // Cross-origin fallback — just use a generous default
+    frame.style.height = '600px';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════════════════
 async function boot() {
-  // Try static manifest first — works for crawlers, live-preview tools,
-  // and environments that block cross-origin API calls.
-  // Falls back to GitHub API if manifest isn't present yet.
   try {
     await loadFromManifest();
   } catch (_) {
@@ -311,11 +367,7 @@ async function boot() {
     }
   }
 
-  if (projects.length === 0) {
-    showEmpty('No .html projects found in root.');
-    return;
-  }
-
+  if (projects.length === 0) { showEmpty('No .html projects found in root.'); return; }
   buildDots();
   goto(0);
 }
@@ -339,27 +391,38 @@ async function loadFromAPI({ user, repo }) {
   const files = await res.json();
   projects = files
     .filter(f => f.type === 'file' && f.name.endsWith('.html') && !EXCLUDE.has(f.name))
-    .map(f => ({
-      file: f.name,
-      url:  './' + f.name,
-      name: fileToTitle(f.name)
-    }));
+    .map(f => ({ file: f.name, url: './' + f.name, name: fileToTitle(f.name) }));
 }
 
+// ═══════════════════════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════════════════════
 function goto(index) {
   if (projects.length === 0) return;
   current = index;
   const p = projects[index];
 
-  document.getElementById('-name').textContent = p.name.toUpperCase();
-  document.getElementById('counter').textContent = `${index + 1}/${projects.length}`;
+  document.getElementById('-name').textContent    = p.name.toUpperCase();
+  document.getElementById('counter').textContent  = `${index + 1}/${projects.length}`;
   document.getElementById('footer-file').textContent = p.file;
-
   document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === index));
 
   showLoading();
+
+  // Disconnect any observer from the previous project
+  if (_resizeObserver) { _resizeObserver.disconnect(); _resizeObserver = null; }
+
   const frame = document.getElementById('-frame');
-  frame.onload = hideLoading;
+  frame.style.height = '300px'; // reset before load
+  frame.onload = () => {
+    // Small delay lets canvas/animation frames settle before measuring
+    setTimeout(() => {
+      autoResizeFrame();
+      hideLoading();
+      // Scroll hub back to top so user sees the project from the start
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 120);
+  };
   frame.src = p.url;
 }
 
@@ -371,10 +434,12 @@ function openCurrent() {
   if (projects[current]) window.open(projects[current].url, '_blank');
 }
 
+// ═══════════════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════════════
 function fileToTitle(f) {
   return f.replace('.html', '').replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
-
 function setLoadingLabel(t) { document.getElementById('loading-label').textContent = t; }
 function showEmpty(msg) {
   document.getElementById('loading').classList.add('hidden');
@@ -382,7 +447,7 @@ function showEmpty(msg) {
   document.getElementById('empty-debug').textContent = msg;
 }
 function showLoading() { document.getElementById('loading').classList.remove('hidden'); }
-function hideLoading() { document.getElementById('loading').classList.add('hidden'); }
+function hideLoading()  { document.getElementById('loading').classList.add('hidden'); }
 
 function buildDots() {
   const dotsEl = document.getElementById('dots');
