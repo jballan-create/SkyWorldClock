@@ -15,9 +15,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Generate projects.json
+      - name: Generate projects.json and sitemap.xml
         run: |
           EXCLUDE=("index.html" "404.html" "backupoldindex.html")
+          DOMAIN="https://raidio.org"
+
+          # ── projects.json ──────────────────────────────────────────
           echo "[" > projects.json
           first=true
           for f in *.html; do
@@ -26,19 +29,39 @@ jobs:
               [[ "$f" == "$ex" ]] && skip=true && break
             done
             $skip && continue
-            # Convert filename to title: remove .html, replace - and _ with space, title-case
             name=$(echo "${f%.html}" | sed 's/[-_]/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2); print}')
             $first || echo "," >> projects.json
             echo "  { \"file\": \"$f\", \"name\": \"$name\" }" >> projects.json
             first=false
           done
           echo "]" >> projects.json
-          cat projects.json
 
-      - name: Commit manifest
+          # ── sitemap.xml ────────────────────────────────────────────
+          TODAY=$(date -u +%Y-%m-%d)
+          {
+            echo '<?xml version="1.0" encoding="UTF-8"?>'
+            echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+            echo "  <url><loc>${DOMAIN}/</loc><lastmod>${TODAY}</lastmod></url>"
+            for f in *.html; do
+              skip=false
+              for ex in "${EXCLUDE[@]}"; do
+                [[ "$f" == "$ex" ]] && skip=true && break
+              done
+              $skip && continue
+              echo "  <url><loc>${DOMAIN}/${f}</loc><lastmod>${TODAY}</lastmod></url>"
+            done
+            echo '</urlset>'
+          } > sitemap.xml
+
+          echo "── projects.json ──"
+          cat projects.json
+          echo "── sitemap.xml ──"
+          cat sitemap.xml
+
+      - name: Commit generated files
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add projects.json
-          git diff --cached --quiet || git commit -m "chore: auto-update projects.json [skip ci]"
+          git add projects.json sitemap.xml
+          git diff --cached --quiet || git commit -m "chore: auto-update manifest + sitemap [skip ci]"
           git push
