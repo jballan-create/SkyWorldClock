@@ -1,0 +1,44 @@
+name: Update Project Manifest
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate projects.json
+        run: |
+          EXCLUDE=("index.html" "404.html" "backupoldindex.html")
+          echo "[" > projects.json
+          first=true
+          for f in *.html; do
+            skip=false
+            for ex in "${EXCLUDE[@]}"; do
+              [[ "$f" == "$ex" ]] && skip=true && break
+            done
+            $skip && continue
+            # Convert filename to title: remove .html, replace - and _ with space, title-case
+            name=$(echo "${f%.html}" | sed 's/[-_]/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2); print}')
+            $first || echo "," >> projects.json
+            echo "  { \"file\": \"$f\", \"name\": \"$name\" }" >> projects.json
+            first=false
+          done
+          echo "]" >> projects.json
+          cat projects.json
+
+      - name: Commit manifest
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add projects.json
+          git diff --cached --quiet || git commit -m "chore: auto-update projects.json [skip ci]"
+          git push
