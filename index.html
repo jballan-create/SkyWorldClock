@@ -10,10 +10,6 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap');
 
-/* ─── Config ─────────────────────────────────────────────────────────
-   These are auto-detected from your GitHub Pages URL.
-   Only set them manually if you're running locally or using a custom domain.
-   ─────────────────────────────────────────────────────────────────── */
 :root {
   --green:  #00ff88;
   --dim:    #00cc66;
@@ -35,7 +31,6 @@ html, body {
   justify-content: center;
 }
 
-/* scanlines */
 body::after {
   content: '';
   position: fixed;
@@ -45,7 +40,6 @@ body::after {
   z-index: 100;
 }
 
-/* ambient glow */
 body::before {
   content: '';
   position: fixed;
@@ -56,7 +50,6 @@ body::before {
   pointer-events: none;
 }
 
-/* ─── Layout ─────────────────────────────────────────────────────── */
 #hub {
   display: flex;
   flex-direction: column;
@@ -65,7 +58,6 @@ body::before {
   width: var(--card-size);
 }
 
-/* ─── Header ─────────────────────────────────────────────────────── */
 #header {
   width: 100%;
   display: flex;
@@ -98,7 +90,6 @@ body::before {
   flex-shrink: 0;
 }
 
-/* ─── Viewport (iframe wrapper) ──────────────────────────────────── */
 #viewport {
   width: 100%;
   height: var(--card-size);
@@ -116,7 +107,6 @@ body::before {
   background: transparent;
 }
 
-/* Loading overlay */
 #loading {
   position: absolute;
   inset: 0;
@@ -146,7 +136,6 @@ body::before {
   letter-spacing: 0.1em;
 }
 
-/* Empty/error state */
 #empty {
   position: absolute;
   inset: 0;
@@ -164,7 +153,6 @@ body::before {
 #empty.visible { display: flex; }
 #empty a { color: var(--green); }
 
-/* ─── Nav bar ────────────────────────────────────────────────────── */
 #nav {
   width: 100%;
   display: flex;
@@ -194,7 +182,6 @@ body::before {
 .nav-btn:disabled { color: rgba(0,255,136,0.15); cursor: default; }
 .nav-btn:disabled:hover { background: none; }
 
-/* Dot indicators */
 #dots {
   display: flex;
   align-items: center;
@@ -221,7 +208,6 @@ body::before {
 }
 .dot:hover { background: rgba(0,255,136,0.5); }
 
-/* ─── Footer ─────────────────────────────────────────────────────── */
 #footer {
   width: 100%;
   display: flex;
@@ -250,6 +236,15 @@ body::before {
 </head>
 <body>
 
+<!-- ═══════════════════════════════════════════════════════════════
+     CRAWLER INDEX — hidden from UI, visible to search bots & previews.
+     Add a line here whenever you add a new .html project to the repo.
+     ═══════════════════════════════════════════════════════════════ -->
+<nav id="crawler-index" style="display:none" aria-hidden="true">
+  <a href="./SkyWorldClock.html">Sky World Clock</a>
+  <a href="./TieDye.html">Tie Dye</a>
+</nav>
+
 <div id="hub">
   <div id="header">
     <div id="-name">SCANNING…</div>
@@ -259,7 +254,7 @@ body::before {
   <div id="viewport">
     <iframe id="-frame"
       sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-      title=" preview">
+      title="project preview">
     </iframe>
 
     <div id="loading">
@@ -297,36 +292,23 @@ const MANUAL_USER = 'jballan-create';
 const MANUAL_REPO = 'SkyWorldClock';
 const EXCLUDE = new Set(['index.html', '404.html', 'backupoldindex.html']);
 
-function detectGitHub() {
-  if (MANUAL_USER && MANUAL_REPO) return { user: MANUAL_USER, repo: MANUAL_REPO };
-  const host = window.location.hostname;
-  const path = window.location.pathname;
-  if (host.endsWith('.github.io')) {
-    const user = host.replace('.github.io', '');
-    const parts = path.split('/').filter(Boolean);
-    const repo = parts.length > 0 ? parts[0] : `${user}.github.io`;
-    return { user, repo };
-  }
-  return null;
-}
-
 let projects = [];
 let current = 0;
 
 async function boot() {
-  const gh = detectGitHub();
-  
+  // Try static manifest first — works for crawlers, live-preview tools,
+  // and environments that block cross-origin API calls.
+  // Falls back to GitHub API if manifest isn't present yet.
   try {
-    // Attempt to load from GitHub API first if we have the info
-    if (gh) {
-      await loadFromAPI(gh);
-    } else {
-      await loadFromManifest();
+    await loadFromManifest();
+  } catch (_) {
+    try {
+      await loadFromAPI({ user: MANUAL_USER, repo: MANUAL_REPO });
+    } catch (err) {
+      console.error(err);
+      showEmpty(`Error: ${err.message}`);
+      return;
     }
-  } catch (err) {
-    console.error(err);
-    showEmpty(`Error: ${err.message}`);
-    return;
   }
 
   if (projects.length === 0) {
@@ -338,37 +320,30 @@ async function boot() {
   goto(0);
 }
 
+async function loadFromManifest() {
+  setLoadingLabel('LOADING MANIFEST…');
+  const res = await fetch('./projects.json');
+  if (!res.ok) throw new Error('projects.json not found');
+  const arr = await res.json();
+  projects = arr.map(p => ({
+    file: p.file,
+    url:  './' + p.file,
+    name: p.name || fileToTitle(p.file)
+  }));
+}
+
 async function loadFromAPI({ user, repo }) {
   setLoadingLabel('SCANNING REPO…');
-  const apiUrl = `https://api.github.com/repos/${user}/${repo}/contents/`;
-  const res = await fetch(apiUrl);
-
-  if (!res.ok) throw new Error(`GitHub API Error: ${res.status}`);
-
+  const res = await fetch(`https://api.github.com/repos/${user}/${repo}/contents/`);
+  if (!res.ok) throw new Error(`GitHub API ${res.status}`);
   const files = await res.json();
   projects = files
     .filter(f => f.type === 'file' && f.name.endsWith('.html') && !EXCLUDE.has(f.name))
     .map(f => ({
       file: f.name,
-      url:  './' + f.name, 
+      url:  './' + f.name,
       name: fileToTitle(f.name)
     }));
-}
-
-async function loadFromManifest() {
-  setLoadingLabel('LOADING LOCAL MANIFEST…');
-  try {
-    const res = await fetch('projects.json');
-    if (!res.ok) throw new Error();
-    const arr = await res.json();
-    projects = arr.map(p => ({
-      file: p.file,
-      url:  p.file,
-      name: p.name || fileToTitle(p.file)
-    }));
-  } catch (e) {
-    throw new Error('projects.json not found. If running locally, please create it.');
-  }
 }
 
 function goto(index) {
@@ -376,7 +351,6 @@ function goto(index) {
   current = index;
   const p = projects[index];
 
-  // FIXED IDs: Matches your HTML (id="-name" and id="-frame")
   document.getElementById('-name').textContent = p.name.toUpperCase();
   document.getElementById('counter').textContent = `${index + 1}/${projects.length}`;
   document.getElementById('footer-file').textContent = p.file;
@@ -413,10 +387,7 @@ function hideLoading() { document.getElementById('loading').classList.add('hidde
 function buildDots() {
   const dotsEl = document.getElementById('dots');
   dotsEl.innerHTML = '';
-  if (projects.length > 20) {
-    dotsEl.textContent = '—';
-    return;
-  }
+  if (projects.length > 20) { dotsEl.textContent = '—'; return; }
   projects.forEach((_, i) => {
     const d = document.createElement('div');
     d.className = 'dot';
