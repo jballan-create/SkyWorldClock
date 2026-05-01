@@ -3,17 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Digital Terrarium: Mutations</title>
-
+<title>Digital Terrarium: Entropy System</title>
 <style>
 :root {
-    --bg: #0f0f0f;
-    --panel: #1a1a1a;
+    --bg: #0c0c0c;
+    --panel: #141414;
     --accent: #ffae00;
-    --text: #e0e0e0;
+    --dim: #3a3a3a;
+    --text: #c8c8c8;
+    --crit: #ff3300;
+    --ok: #00cc66;
+    --warn: #ffae00;
+    --cool: #00aaff;
     --flow-speed: 2s;
-    --entropy-color: #ff3300;
 }
+
+* { box-sizing: border-box; }
 
 body {
     background: var(--bg);
@@ -24,122 +29,248 @@ body {
     flex-direction: column;
     min-height: 100vh;
     overflow-y: auto;
-    transition: background 0.5s ease;
 }
 
 header {
-    padding: 10px 20px;
-    border-bottom: 1px solid var(--accent);
+    padding: 8px 16px;
+    border-bottom: 1px solid #2a2a2a;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-    font-size: 11px;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    font-size: 10px;
+    background: var(--panel);
 }
+
+header span { font-weight: bold; }
 
 #main-sim {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     padding: 10px;
 }
 
+/* ── visualizer ── */
 #visualizer {
     background: var(--panel);
-    border-radius: 8px;
+    border-radius: 6px;
+    border: 1px solid #222;
+    padding: 16px 10px;
     display: flex;
     flex-direction: column;
-    justify-content: space-around;
     align-items: center;
-    border: 1px solid #333;
-    height: 500px;
+    gap: 0;
+    position: relative;
 }
 
 .node {
-    width: 100px;
-    height: 100px;
+    width: 96px;
+    height: 96px;
     border: 2px solid var(--accent);
     border-radius: 50%;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    font-size: 10px;
-    background: rgba(0,0,0,0.8);
-    transition: all 0.3s ease;
+    font-size: 9px;
+    background: rgba(0,0,0,0.85);
+    transition: border-color 0.4s, box-shadow 0.4s;
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    letter-spacing: 0.05em;
 }
 
-.node.pulse {
-    transform: scale(1.1);
-    box-shadow: 0 0 20px var(--accent);
+.node b { font-size: 18px; display: block; margin-top: 3px; }
+.node small { font-size: 8px; opacity: 0.5; margin-top: 2px; }
+
+.node.ok     { border-color: var(--ok);   box-shadow: 0 0 12px rgba(0,204,102,0.3); }
+.node.warn   { border-color: var(--warn); box-shadow: 0 0 12px rgba(255,174,0,0.3); }
+.node.crit   { border-color: var(--crit); box-shadow: 0 0 20px rgba(255,51,0,0.5); }
+.node.down   { border-color: #333;        box-shadow: none; opacity: 0.5; }
+.node.pulse  { animation: pulse 0.6s ease-out; }
+
+@keyframes pulse {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.12); }
+    100% { transform: scale(1); }
 }
 
 .pipe {
     width: 2px;
-    height: 40px;
-    background: #333;
+    height: 36px;
+    background: #222;
     position: relative;
     overflow: hidden;
+    z-index: 1;
 }
 
 .pipe::after {
     content: "";
     position: absolute;
     width: 100%;
-    height: 15px;
+    height: 12px;
     background: var(--accent);
     animation: flow var(--flow-speed) linear infinite;
 }
 
+.pipe.slow::after  { animation-duration: 4s; opacity: 0.4; }
+.pipe.fast::after  { animation-duration: 0.8s; }
+.pipe.dead::after  { display: none; }
+
 @keyframes flow {
-    from { top: -15px; }
-    to { top: 100%; }
+    from { top: -12px; }
+    to   { top: 100%; }
 }
 
+/* ── side nodes ── */
+#node-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.mini-node {
+    padding: 5px 10px;
+    border: 1px solid #333;
+    border-radius: 4px;
+    font-size: 9px;
+    opacity: 0.3;
+    transition: opacity 0.5s, border-color 0.5s, color 0.5s;
+    text-align: center;
+    min-width: 70px;
+}
+
+.mini-node.active {
+    opacity: 1;
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.mini-node.active.cool-node  { border-color: var(--cool); color: var(--cool); }
+.mini-node.active.ai-node    { border-color: var(--ok);   color: var(--ok);   }
+
+/* ── entropy bar ── */
+#entropy-bar-wrap {
+    width: 100%;
+    max-width: 340px;
+    background: #1a1a1a;
+    border-radius: 4px;
+    height: 6px;
+    border: 1px solid #2a2a2a;
+    overflow: hidden;
+    margin: 6px 0 2px;
+}
+
+#entropy-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--ok), var(--warn), var(--crit));
+    transition: width 0.5s ease;
+}
+
+/* ── ledger ── */
 #ledger {
     background: var(--panel);
-    padding: 15px;
-    border-radius: 8px;
-    font-size: 11px;
-    height: 160px;
+    padding: 12px 14px;
+    border-radius: 6px;
+    font-size: 10px;
+    height: 148px;
     overflow-y: auto;
-    border: 1px solid #222;
+    border: 1px solid #1e1e1e;
+    line-height: 1.6;
 }
 
-.entry { margin-bottom: 5px; border-left: 2px solid var(--accent); padding-left: 5px; }
-.crit { color: var(--entropy-color); font-weight: bold; }
-.stat { color: var(--accent); }
+.entry { border-left: 2px solid #333; padding-left: 6px; color: #888; }
+.entry.ev-crit  { border-color: var(--crit); color: var(--crit); font-weight: bold; }
+.entry.ev-ok    { border-color: var(--ok);   color: var(--ok); }
+.entry.ev-info  { border-color: var(--accent); color: var(--text); }
+.entry.ev-cool  { border-color: var(--cool); color: var(--cool); }
+.entry.ev-sys   { border-color: #444; color: #555; font-style: italic; }
+
+.stat { color: var(--accent); font-weight: bold; }
 </style>
 </head>
 
 <body>
 
 <header>
-<div>PROTOCOL: <span id="sim-id" class="stat"></span></div>
-<div>TECH: <span id="v-num" class="stat">1.0</span></div>
-<div>ENERGY: <span id="energy">0</span></div>
-<div>ENTROPY: <span id="entropy">0</span>%</div>
+    <div>SEED <span id="sim-id" class="stat"></span></div>
+    <div>VER  <span id="v-num"  class="stat">1.0</span></div>
+    <div>PWR  <span id="energy" class="stat">0</span></div>
+    <div>ENT  <span id="entropy-label" class="stat">0</span>%</div>
+    <div>TICK <span id="tick-count" class="stat">0</span></div>
 </header>
 
 <div id="main-sim">
 
-<div id="visualizer">
-    <div class="node" id="extract"><span>EXTRACTOR</span><b id="raw">0</b></div>
-    <div class="pipe"></div>
-    <div class="node" id="fab"><span>FAB</span><b id="refined">0</b></div>
-    <div class="pipe"></div>
-    <div class="node" id="humans"><span>POP</span><b id="pop">10</b></div>
-</div>
+    <div id="visualizer">
+        <div id="node-row">
+            <div class="mini-node" id="mn-cooling">❄ COOL</div>
+            <div class="mini-node" id="mn-storage">▣ STORE</div>
+            <div class="mini-node" id="mn-ai">◈ AI</div>
+        </div>
 
-<div id="ledger"></div>
+        <div style="height:10px"></div>
+
+        <div class="node" id="n-extract">
+            <span>EXTRACTOR</span>
+            <b id="raw">0</b>
+            <small id="ext-eff">eff 1.2</small>
+        </div>
+        <div class="pipe" id="pipe-ef"></div>
+        <div class="node" id="n-fab">
+            <span>FAB</span>
+            <b id="refined">0</b>
+            <small id="fab-eff">eff 1.0</small>
+        </div>
+        <div class="pipe" id="pipe-fh"></div>
+        <div class="node" id="n-humans">
+            <span>POP</span>
+            <b id="pop">10</b>
+            <small id="pop-sub"></small>
+        </div>
+
+        <div style="height:6px"></div>
+        <div id="entropy-bar-wrap"><div id="entropy-bar"></div></div>
+        <div style="font-size:9px; opacity:0.4; margin-top:2px">ENTROPY</div>
+    </div>
+
+    <div id="ledger"></div>
 
 </div>
 
 <script>
+// ─────────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────────
+const ENERGY_BASE_DRAIN   = 1.5;    // per tick baseline
+const ENERGY_BASE_GEN     = 1.8;    // infrastructure always generates this (floor)
+const ENERGY_POP_DRAIN    = 0.05;   // per pop member per tick
+const ENERGY_POP_GEN      = 0.28;   // workers generate energy per pop (on top of base)
+const ENERGY_MAX          = 300;
+const ENERGY_BLACKOUT     = 12;     // below this → blackout risk
+const FAB_RAW_COST        = 5;
+const POP_REFINED_COST    = 10;
+const POP_STARVATION_THR  = 0.22;   // refined < pop * this → starvation streak
+const POP_GROWTH_THR      = 2.5;    // refined > pop * this → growth
+const ENTROPY_EXTRACT_GAIN = 0.12;
+const ENTROPY_DECAY        = 0.993;
+const ENTROPY_COOLING_RATE = 0.04;  // if cooling active
+const ENTROPY_CASCADE      = 100;   // cascade threshold
+const INNOVATE_THRESHOLD   = 5;
+const STRESS_FAILURE_THR   = 1.5;
+const STRESS_MUTATE_THR    = 2.2;
 
-const SEED = "SYS-" + Math.floor(Math.random()*999);
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+const SEED = "SYS-" + Math.floor(Math.random() * 9999).toString().padStart(4,"0");
 document.getElementById("sim-id").innerText = SEED;
 
 let state = {
+    tick: 0,
     v: 1.0,
     energy: 120,
     raw: 0,
@@ -149,158 +280,395 @@ let state = {
 
     extractorEff: 1.2,
     fabEff: 1.0,
-    energyRecovery: 1.0,
 
     innovationBuffer: 0,
+    blackoutTicks: 0,   // ticks of production halt
+    starvationStreak: 0,   // consecutive ticks starving before death fires
+    cascadeCount: 0,    // how many entropy cascades have happened
 
-    patternGraph: { nodes: {} },
+    // discovered nodes
+    nodes: { cooling: false, storage: false, ai: false },
 
-    nodes: {
-        cooling: false,
-        storage: false,
-        ai: false
-    },
-
+    // actual storage buffers
     storageBuffer: { raw: 0, refined: 0 },
 
+    // per-node runtime stats
     nodeStats: {
-        extractor: { eff: 1.2, load: 0, stress: 0, cooldown: 0 },
-        fab: { eff: 1.0, load: 0, stress: 0, cooldown: 0 },
-        humans: { eff: 1, load: 0, stress: 0, cooldown: 0 }
-    }
+        extractor: { eff: 1.0, stress: 0, cooldown: 0 },
+        fab:       { eff: 1.0, stress: 0, cooldown: 0 },
+        humans:    { eff: 1.0, stress: 0, cooldown: 0 },
+    },
+
+    // normalized per-type event counts for bottleneck detection
+    events: { extract: 0, fab: 0, humans: 0 },
 };
 
+// ─────────────────────────────────────────────
+// LOGGING
+// ─────────────────────────────────────────────
 const ledger = document.getElementById("ledger");
-
-function log(msg, crit=false) {
+function log(msg, type = "info") {
     const d = document.createElement("div");
-    d.className = crit ? "entry crit" : "entry";
-    d.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    d.className = "entry ev-" + type;
+    d.innerText = `[${state.tick.toString().padStart(4,"0")}] ${msg}`;
     ledger.prepend(d);
+    // cap log length
+    while (ledger.children.length > 120) ledger.removeChild(ledger.lastChild);
 }
 
-function capturePattern(type) {
-    if (!state.patternGraph.nodes[type]) {
-        state.patternGraph.nodes[type] = { count: 0 };
-        log("Pattern learned: " + type);
-    }
-    state.patternGraph.nodes[type].count++;
-    state.innovationBuffer += 0.2 * (1 + state.entropy/50);
-}
-
+// ─────────────────────────────────────────────
+// NODE DISCOVERY
+// ─────────────────────────────────────────────
 function discoverNodes() {
-    if (!state.nodes.cooling && state.entropy > 70) {
+    if (!state.nodes.cooling && state.entropy > 65) {
         state.nodes.cooling = true;
-        log("Node: Cooling Plant");
+        document.getElementById("mn-cooling").classList.add("active","cool-node");
+        log("Node online: COOLING PLANT — entropy drain active", "cool");
     }
-    if (!state.nodes.storage && (state.raw > 20 || state.refined > 20)) {
+    if (!state.nodes.storage && (state.raw > 25 || state.refined > 25)) {
         state.nodes.storage = true;
-        log("Node: Storage");
+        document.getElementById("mn-storage").classList.add("active");
+        log("Node online: STORAGE — overflow buffering active", "info");
     }
-    if (!state.nodes.ai && state.v > 1.5 && state.entropy < 40) {
+    if (!state.nodes.ai && state.v > 1.5 && state.entropy < 50) {
         state.nodes.ai = true;
-        log("Node: AI Core");
+        document.getElementById("mn-ai").classList.add("active","ai-node");
+        log("Node online: AI CORE — innovation rate ×2", "ok");
     }
 }
 
-function mutateNode(name) {
-    const node = state.nodeStats[name];
-    node.eff += 0.3;
-    node.stress *= 0.8;
-    log(name.toUpperCase() + " mutated");
-}
-
+// ─────────────────────────────────────────────
+// NODE STRESS & FAILURE
+// ─────────────────────────────────────────────
 function applyNodeStress() {
-    for (const n in state.nodeStats) {
-        const node = state.nodeStats[n];
+    for (const name in state.nodeStats) {
+        const n = state.nodeStats[name];
 
-        node.stress += state.entropy * 0.01;
+        // stress accumulates with entropy pressure
+        n.stress += state.entropy * 0.008;
 
-        if (node.stress > 1.5 && Math.random() < 0.05) {
-            node.cooldown = 3;
-            log(n + " FAILED", true);
-        }
-
-        if (node.stress > 2.0 && Math.random() < 0.03) {
-            mutateNode(n);
-        }
-
-        if (node.cooldown > 0) {
-            node.cooldown--;
+        // handle cooldown countdown
+        if (n.cooldown > 0) {
+            n.cooldown--;
+            // still accumulate stress but no efficiency action
             continue;
         }
 
-        if (node.stress > 0.8) {
-            node.eff *= 0.97;
+        // degradation under high stress
+        if (n.stress > 0.7) {
+            n.eff = Math.max(0.2, n.eff * 0.98);
+        }
+
+        // random failure → cooldown (BLOCKS production — checked in tick)
+        if (n.stress > STRESS_FAILURE_THR && Math.random() < 0.04) {
+            n.cooldown = 4 + Math.floor(Math.random() * 4);
+            n.eff = Math.max(0.2, n.eff * 0.7);
+            state.entropy += 5;  // failure spike
+            log(name.toUpperCase() + " FAILURE — " + n.cooldown + " tick cooldown", "crit");
+        }
+
+        // mutation (stress relief + efficiency bonus) — rare
+        if (n.stress > STRESS_MUTATE_THR && Math.random() < 0.02) {
+            n.eff  = Math.min(3.0, n.eff + 0.4);
+            n.stress *= 0.5;
+            log(name.toUpperCase() + " MUTATED → eff " + n.eff.toFixed(2), "ok");
+        }
+
+        // natural stress recovery
+        n.stress = Math.max(0, n.stress - 0.01);
+    }
+}
+
+// ─────────────────────────────────────────────
+// EVOLVE — smarter bottleneck detection
+// ─────────────────────────────────────────────
+function evolve() {
+    // Normalize event counts by max possible calls per cycle to detect real bottleneck
+    const extractRate = state.events.extract;   // called every non-blackout tick
+    const fabRate     = state.events.fab;        // called when raw > threshold
+    const humansRate  = state.events.humans;     // called when refined > threshold
+
+    // Reset for next innovation window
+    state.events = { extract: 0, fab: 0, humans: 0 };
+
+    // Detect bottleneck: which stage fires proportionally LESS (starved)
+    const fabStarved     = fabRate   < extractRate * 0.6;
+    const humansStarved  = humansRate < fabRate    * 0.6;
+    const energyLow      = state.energy < ENERGY_MAX * 0.3;
+
+    if (energyLow) {
+        // Energy is the bottleneck — boost recovery through efficiency
+        state.nodeStats.extractor.eff = Math.min(3.0, state.nodeStats.extractor.eff + 0.15);
+        log("Invention: Energy Optimization", "ok");
+    } else if (humansStarved) {
+        // Pop can't grow — refinery is limiting
+        state.fabEff = Math.min(8.0, state.fabEff + 0.3);
+        log("Invention: Refinery Throughput +" + state.fabEff.toFixed(1), "ok");
+    } else if (fabStarved) {
+        // Fab can't run — extraction is limiting
+        state.extractorEff = Math.min(6.0, state.extractorEff + 0.4);
+        log("Invention: Extractor Output +" + state.extractorEff.toFixed(1), "ok");
+    } else {
+        // Balanced — upgrade whichever node has lowest eff
+        const weakest = Object.entries(state.nodeStats)
+            .sort((a,b) => a[1].eff - b[1].eff)[0];
+        weakest[1].eff = Math.min(3.0, weakest[1].eff + 0.2);
+        log("Invention: " + weakest[0].toUpperCase() + " node hardened", "ok");
+    }
+
+    state.v = parseFloat((state.v + 0.1).toFixed(1));
+}
+
+// ─────────────────────────────────────────────
+// CASCADE FAILURE
+// ─────────────────────────────────────────────
+function triggerCascade() {
+    state.cascadeCount++;
+    state.entropy = 60;
+    state.blackoutTicks = 5;
+    // spike all node stress
+    for (const n in state.nodeStats) {
+        state.nodeStats[n].stress += 1.0;
+        state.nodeStats[n].eff = Math.max(0.3, state.nodeStats[n].eff * 0.6);
+    }
+    state.energy = Math.max(30, state.energy * 0.5);
+    log("⚠ CASCADE FAILURE #" + state.cascadeCount + " — systems compromised", "crit");
+}
+
+// ─────────────────────────────────────────────
+// MAIN TICK
+// ─────────────────────────────────────────────
+function tick() {
+    state.tick++;
+
+    // ── BLACKOUT ──────────────────────────────
+    if (state.blackoutTicks > 0) {
+        state.blackoutTicks--;
+        if (state.blackoutTicks === 0) log("Power restored", "ok");
+        updateUI();
+        return;  // no production during blackout
+    }
+
+    // ── ENERGY ────────────────────────────────
+    // Drain scales with pop size
+    const drain = ENERGY_BASE_DRAIN + state.pop * ENERGY_POP_DRAIN;
+    // Infrastructure provides a floor; workers add on top, reduced by entropy
+    const workerEff = Math.max(0, 1 - state.entropy / 150);
+    const gen   = ENERGY_BASE_GEN + state.pop * ENERGY_POP_GEN * workerEff;
+    state.energy = Math.min(ENERGY_MAX, state.energy - drain + gen);
+
+    if (state.energy < 0) {
+        state.energy = 55;
+        state.blackoutTicks = 4;
+        log("BLACKOUT — production halted " + state.blackoutTicks + " ticks", "crit");
+        updateUI(); return;
+    }
+    if (state.energy < ENERGY_BLACKOUT && Math.random() < 0.06) {
+        state.blackoutTicks = 2;
+        log("Low-power event — partial blackout", "crit");
+    }
+
+    // ── EXTRACTION ────────────────────────────
+    const extNode = state.nodeStats.extractor;
+    if (extNode.cooldown === 0) {
+        const entPenalty = Math.max(0.25, 1 - state.entropy / 160);
+        const extracted  = state.extractorEff * extNode.eff * entPenalty;
+
+        // Storage node: overflow into buffer instead of wasting
+        if (state.nodes.storage && state.raw > 40) {
+            state.storageBuffer.raw = Math.min(100, state.storageBuffer.raw + extracted * 0.5);
+        } else {
+            state.raw += extracted;
+        }
+
+        state.events.extract++;
+        state.innovationBuffer += 0.2 * (state.nodes.ai ? 2 : 1);
+    }
+
+    // ── FABRICATION ───────────────────────────
+    const fabNode = state.nodeStats.fab;
+    if (fabNode.cooldown === 0 && state.raw >= FAB_RAW_COST) {
+        state.raw -= FAB_RAW_COST;
+        const fabOut = state.fabEff * fabNode.eff;
+
+        if (state.nodes.storage && state.refined > 50) {
+            state.storageBuffer.refined = Math.min(100, state.storageBuffer.refined + fabOut * 0.5);
+        } else {
+            state.refined += fabOut;
+        }
+
+        state.events.fab++;
+        state.innovationBuffer += 0.15 * (state.nodes.ai ? 2 : 1);
+    } else if (fabNode.cooldown === 0 && state.storageBuffer.raw > FAB_RAW_COST) {
+        // tap storage buffer if main raw is low
+        state.storageBuffer.raw -= FAB_RAW_COST;
+        state.refined += state.fabEff * fabNode.eff * 0.8;
+        state.events.fab++;
+    }
+
+    // ── POPULATION ────────────────────────────
+    const humNode = state.nodeStats.humans;
+    if (humNode.cooldown === 0) {
+        // growth
+        if (state.refined >= POP_REFINED_COST && state.refined > state.pop * POP_GROWTH_THR) {
+            state.refined -= POP_REFINED_COST;
+            state.pop++;
+            state.events.humans++;
+            state.innovationBuffer += 0.3 * (state.nodes.ai ? 2 : 1);
+        }
+
+        // starvation — must be hungry for 3 consecutive ticks before death
+        if (state.refined < state.pop * POP_STARVATION_THR && state.pop > 1) {
+            state.starvationStreak++;
+            if (state.starvationStreak >= 3) {
+                state.pop = Math.max(1, state.pop - 1);
+                state.starvationStreak = 0;
+                log("Starvation — pop now " + state.pop, "crit");
+            }
+        } else {
+            state.starvationStreak = 0; // reset if fed
+        }
+
+        // entropy-driven death — only when pop is healthy enough to spare one
+        if (state.entropy > 80 && state.pop > 3 && Math.random() < 0.025) {
+            state.pop = Math.max(1, state.pop - 1);
+            log("Entropy death — pop now " + state.pop, "crit");
+        }
+
+        // tap refined from storage when main supply critical
+        if (state.refined < 5 && state.storageBuffer.refined > 5) {
+            state.refined += Math.min(state.storageBuffer.refined, 8);
+            state.storageBuffer.refined -= Math.min(state.storageBuffer.refined, 8);
         }
     }
-}
 
-function evolve() {
-    const p = state.patternGraph.nodes;
-
-    if ((p.extract?.count || 0) > (p.fab?.count || 0)) {
-        state.extractorEff += 0.3;
-        log("Invention: Extraction Boost");
-    } else {
-        state.fabEff += 0.2;
-        log("Invention: Fabrication Boost");
+    // extinction check
+    if (state.pop <= 0) {
+        state.pop = 0;
+        log("★ EXTINCTION — simulation resetting", "crit");
+        setTimeout(resetSim, 3000);
+        updateUI(); return;
     }
 
-    state.v += 0.1;
-}
+    // ── ENTROPY ───────────────────────────────
+    state.entropy += state.extractorEff * ENTROPY_EXTRACT_GAIN;
+    state.entropy *= ENTROPY_DECAY;
 
-function tick() {
-
-    // extraction
-    state.energy -= 2;
-    state.raw += state.extractorEff;
-    state.energy += state.energyRecovery;
-
-    capturePattern("extract");
-
-    // fabrication
-    if (state.raw > 5) {
-        state.raw -= 5;
-        state.refined += state.fabEff;
-        capturePattern("fab");
+    // cooling node effect: actively drains entropy
+    if (state.nodes.cooling) {
+        state.entropy = Math.max(0, state.entropy - state.entropy * ENTROPY_COOLING_RATE);
     }
 
-    // population
-    if (state.refined > 10) {
-        state.refined -= 10;
-        state.pop++;
-        capturePattern("humans");
+    state.entropy = Math.max(0, state.entropy);
+
+    if (state.entropy >= ENTROPY_CASCADE) {
+        triggerCascade();
     }
 
-    // entropy dynamics
-    state.entropy += state.extractorEff * 0.1;
-    state.entropy *= 0.995;
+    // ── NODE STRESS & DISCOVERY ───────────────
+    applyNodeStress();
+    discoverNodes();
 
-    // AI loop
-    if (state.innovationBuffer > 5) {
+    // ── INNOVATION ────────────────────────────
+    if (state.innovationBuffer >= INNOVATE_THRESHOLD) {
         evolve();
         state.innovationBuffer = 0;
     }
 
-    discoverNodes();
-    applyNodeStress();
-
     updateUI();
 }
 
+// ─────────────────────────────────────────────
+// SOFT RESET (extinction)
+// ─────────────────────────────────────────────
+function resetSim() {
+    state.pop             = 8;
+    state.raw             = 5;
+    state.refined         = 30;
+    state.energy          = 100;
+    state.entropy         = state.entropy * 0.5;
+    state.starvationStreak = 0;
+    state.blackoutTicks   = 0;
+    state.innovationBuffer = 0;
+    state.storageBuffer   = { raw: 0, refined: 0 };
+    for (const n in state.nodeStats) {
+        state.nodeStats[n].stress   = 0;
+        state.nodeStats[n].cooldown = 0;
+    }
+    log("Colony reseeded — v" + state.v.toFixed(1) + " knowledge retained", "ok");
+}
+
+// ─────────────────────────────────────────────
+// UI UPDATE
+// ─────────────────────────────────────────────
+function nodeClass(nodeKey) {
+    const n = state.nodeStats[nodeKey];
+    if (n.cooldown > 0) return "down";
+    if (n.stress > 1.2)  return "crit";
+    if (n.stress > 0.7)  return "warn";
+    return "ok";
+}
+
+function pipeClass(fromKey) {
+    const n = state.nodeStats[fromKey];
+    if (state.blackoutTicks > 0 || n.cooldown > 0) return "dead";
+    if (state.entropy > 70) return "slow";
+    if (state.v > 2.0) return "fast";
+    return "";
+}
+
+let lastPop = 10;
 function updateUI() {
     document.getElementById("energy").innerText = Math.floor(state.energy);
-    document.getElementById("entropy").innerText = Math.floor(state.entropy);
+    document.getElementById("entropy-label").innerText = Math.floor(state.entropy);
     document.getElementById("raw").innerText = state.raw.toFixed(1);
     document.getElementById("refined").innerText = Math.floor(state.refined);
     document.getElementById("pop").innerText = state.pop;
     document.getElementById("v-num").innerText = state.v.toFixed(1);
+    document.getElementById("tick-count").innerText = state.tick;
+    document.getElementById("ext-eff").innerText =
+        "eff " + (state.extractorEff * state.nodeStats.extractor.eff).toFixed(2);
+    document.getElementById("fab-eff").innerText =
+        "eff " + (state.fabEff * state.nodeStats.fab.eff).toFixed(2);
+
+    // pop change indicator
+    const popSub = document.getElementById("pop-sub");
+    if (state.pop > lastPop)      popSub.innerText = "▲ growing";
+    else if (state.pop < lastPop) popSub.innerText = "▼ dying";
+    else                          popSub.innerText = state.entropy > 50 ? "⚠ stressed" : "";
+    lastPop = state.pop;
+
+    // node status classes
+    const nEl = {
+        "n-extract": "extractor",
+        "n-fab":     "fab",
+        "n-humans":  "humans",
+    };
+    for (const [id, key] of Object.entries(nEl)) {
+        const el = document.getElementById(id);
+        el.className = "node " + nodeClass(key);
+        if (state.blackoutTicks > 0) el.className = "node down";
+    }
+
+    // pipe classes
+    document.getElementById("pipe-ef").className = "pipe " + pipeClass("extractor");
+    document.getElementById("pipe-fh").className = "pipe " + pipeClass("fab");
+
+    // entropy bar
+    const pct = Math.min(100, state.entropy);
+    document.getElementById("entropy-bar").style.width = pct + "%";
+
+    // body background tint on high entropy
+    const tint = Math.floor(Math.min(30, state.entropy * 0.3));
+    document.body.style.background = `rgb(${12 + tint}, 12, 12)`;
 }
 
+// ─────────────────────────────────────────────
+// BOOT
+// ─────────────────────────────────────────────
+log("System boot — seed " + SEED, "sys");
+log("Population: " + state.pop + " | Energy: " + state.energy, "sys");
 setInterval(tick, 1000);
-
 </script>
-
 </body>
 </html>
