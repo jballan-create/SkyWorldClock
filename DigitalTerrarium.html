@@ -21,8 +21,9 @@ body {
     margin: 0;
     display: flex;
     flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
+    height: auto; 
+    min-height: 100vh;
+    overflow-y: auto; 
     transition: all 1s ease;
 }
 
@@ -34,14 +35,15 @@ header {
     border-bottom: 1px solid var(--accent);
     display: flex;
     justify-content: space-between;
+    font-size: 12px;
 }
 
 #main-sim {
-    display: grid;
-    grid-template-columns: 1fr 300px;
-    flex-grow: 1;
+    display: flex;
+    flex-direction: column; 
     gap: 10px;
-    padding: 20px;
+    padding: 10px;
+    flex-grow: 1;
 }
 
 #visualizer {
@@ -49,14 +51,17 @@ header {
     border-radius: 8px;
     position: relative;
     display: flex;
+    flex-direction: column; 
     justify-content: space-around;
     align-items: center;
     border: 1px solid #333;
+    height: 450px;
+    padding: 20px 0;
 }
 
 .node {
-    width: 100px;
-    height: 100px;
+    width: 90px;
+    height: 90px;
     border: 2px solid var(--accent);
     border-radius: 50%;
     display: flex;
@@ -64,7 +69,7 @@ header {
     justify-content: center;
     align-items: center;
     font-size: 10px;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0,0,0,0.8);
     z-index: 2;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
@@ -75,10 +80,10 @@ header {
 }
 
 .pipe {
-    position: absolute;
-    height: 2px;
+    position: relative;
+    width: 2px; 
+    height: 50px;
     background: #333;
-    width: 30%;
     z-index: 1;
     overflow: hidden;
 }
@@ -86,15 +91,15 @@ header {
 .pipe::after {
     content: "";
     position: absolute;
-    width: 20px;
-    height: 100%;
+    width: 100%;
+    height: 20px;
     background: var(--accent);
-    animation: flow var(--flow-speed) linear infinite;
+    animation: v-flow var(--flow-speed) linear infinite;
 }
 
-@keyframes flow {
-    from { left: -20px; }
-    to { left: 100%; }
+@keyframes v-flow {
+    from { top: -20px; }
+    to { top: 100%; }
 }
 
 #ledger {
@@ -102,7 +107,9 @@ header {
     padding: 15px;
     border-radius: 8px;
     font-size: 11px;
+    max-height: 250px;
     overflow-y: auto;
+    border: 1px solid #222;
 }
 
 .entry {
@@ -123,16 +130,16 @@ header {
 
 <header>
     <div>PROTOCOL: <span id="sim-id" class="stat-val"></span></div>
-    <div>TECH VERSION: <span id="v-num" class="stat-val">1.0.0</span></div>
-    <div>ENERGY: <span id="energy-val" class="stat-val">0</span>J</div>
+    <div>TECH: <span id="v-num" class="stat-val">1.0.0</span></div>
+    <div>ENG: <span id="energy-val" class="stat-val">0</span>J</div>
 </header>
 
 <div id="main-sim">
     <div id="visualizer">
         <div class="node" id="node-extract"><span>EXTRACTOR</span><b id="raw-val">0</b></div>
-        <div class="pipe" style="left: 28%;"></div>
+        <div class="pipe"></div>
         <div class="node" id="node-fab"><span>FABRICATOR</span><b id="fab-val">0</b></div>
-        <div class="pipe" style="left: 62%;"></div>
+        <div class="pipe"></div>
         <div class="node" id="node-cons"><span>HUMANS</span><b id="pop-val">10</b></div>
     </div>
 
@@ -151,11 +158,9 @@ let state = {
     raw: 0,
     refined: 0,
     pop: 10,
-
     extractorEff: 1,
     fabEff: 1,
     energyRecovery: 0,
-
     patternGraph: { nodes: {} },
     innovationBuffer: 0
 };
@@ -167,33 +172,29 @@ function log(msg) {
     div.className = 'entry';
     div.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
     ledger.prepend(div);
-    if (ledger.children.length > 20) ledger.lastChild.remove();
+    if (ledger.children.length > 15) ledger.lastChild.remove();
 }
 
 function pulse(id) {
     const el = document.getElementById(id);
-    el.classList.add('pulse');
-    setTimeout(() => el.classList.remove('pulse'), 300);
+    if(el) {
+        el.classList.add('pulse');
+        setTimeout(() => el.classList.remove('pulse'), 300);
+    }
 }
 
 function capturePattern(event) {
     const key = `${event.input}->${event.output}`;
-
     if (!state.patternGraph.nodes[key]) {
         state.patternGraph.nodes[key] = { count: 0 };
-        log(`New Pattern Observed: ${key}`);
+        log(`Pattern Observed: ${key}`);
     }
-
     state.patternGraph.nodes[key].count++;
     state.innovationBuffer += 0.2;
 }
 
 function generateInvention() {
-    const keys = Object.keys(state.patternGraph.nodes);
-    if (keys.length === 0) return null;
-
     const roll = Math.random();
-
     if (roll < 0.33) return { type: "extractor_overdrive" };
     if (roll < 0.66) return { type: "fabrication_optimization" };
     return { type: "energy_recovery" };
@@ -201,32 +202,26 @@ function generateInvention() {
 
 function applyInvention(inv) {
     if (!inv) return;
-
     switch(inv.type) {
         case "extractor_overdrive":
             state.extractorEff += 0.3;
             pulse("node-extract");
-            log("Invention: Extractor Overdrive");
+            log("Upgraded: Extractor Overdrive");
             break;
-
         case "fabrication_optimization":
             state.fabEff += 0.3;
             pulse("node-fab");
-            log("Invention: Fabrication Optimization");
+            log("Upgraded: Fabrication Logic");
             break;
-
         case "energy_recovery":
             state.energyRecovery += 0.5;
             pulse("node-cons");
-            log("Invention: Energy Recovery Systems");
+            log("Upgraded: Energy Recycling");
             break;
     }
-
     state.v += 0.1;
     updateFlowSpeed();
     updateAesthetic();
-
-    log(`Tech Level Advanced → v${state.v.toFixed(1)}`);
 }
 
 function updateFlowSpeed() {
@@ -235,28 +230,23 @@ function updateFlowSpeed() {
 }
 
 function tick() {
-
-    // Extraction
     if (state.energy > 5) {
         state.energy -= 2;
         state.raw += state.extractorEff;
         state.energy += 3 + state.energyRecovery;
     }
 
-    // Fabrication
     if (state.raw >= 5) {
         state.raw -= 5;
         state.refined += state.fabEff;
         capturePattern({input: "raw", output: "refined"});
-        log("Humans fabricated goods.");
+        log("Human fabrication complete.");
     }
 
-    // Innovation trigger
     if (state.innovationBuffer >= 5) {
         applyInvention(generateInvention());
         state.innovationBuffer = 0;
     }
-
     updateUI();
 }
 
@@ -271,11 +261,9 @@ function updateUI() {
 function updateAesthetic() {
     if (state.v >= 1.3 && state.v < 1.6) {
         document.body.classList.add('bio-tech');
-        log("Environment Shift: Bio-Organic protocols active.");
     } else if (state.v >= 1.6) {
         document.body.classList.remove('bio-tech');
         document.body.classList.add('cyber-noir');
-        log("Environment Shift: Cyber-Noir optimization active.");
     }
 }
 
@@ -284,3 +272,4 @@ setInterval(tick, 1000);
 
 </body>
 </html>
+
