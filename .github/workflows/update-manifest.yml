@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: write
-  workflows: write  # This is required to push files to .github/workflows/
 
 jobs:
   build-manifest:
@@ -16,20 +15,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Generate projects.json and sitemap.xml
+      - name: Generate files
         run: |
           EXCLUDE=("index.html" "404.html" "backupoldindex.html")
           DOMAIN="https://raidio.org"
-          SITEMAP_PATH=".github/workflows/sitemap.xml"
 
-          # ── projects.json (Root) ──────────────────────────────────
+          # Create projects.json
           echo "[" > projects.json
           first=true
           for f in *.html; do
             skip=false
-            for ex in "${EXCLUDE[@]}"; do
-              [[ "$f" == "$ex" ]] && skip=true && break
-            done
+            for ex in "${EXCLUDE[@]}"; do [[ "$f" == "$ex" ]] && skip=true && break; done
             $skip && continue
             name=$(echo "${f%.html}" | sed 's/[-_]/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2); print}')
             $first || echo "," >> projects.json
@@ -38,7 +34,7 @@ jobs:
           done
           echo "]" >> projects.json
 
-          # ── sitemap.xml (In .github/workflows/) ────────────────────
+          # Create sitemap.xml in root
           TODAY=$(date -u +%Y-%m-%d)
           {
             echo '<?xml version="1.0" encoding="UTF-8"?>'
@@ -46,21 +42,16 @@ jobs:
             echo "  <url><loc>${DOMAIN}/</loc><lastmod>${TODAY}</lastmod></url>"
             for f in *.html; do
               skip=false
-              for ex in "${EXCLUDE[@]}"; do
-                [[ "$f" == "$ex" ]] && skip=true && break
-              done
+              for ex in "${EXCLUDE[@]}"; do [[ "$f" == "$ex" ]] && skip=true && break; done
               $skip && continue
               echo "  <url><loc>${DOMAIN}/${f}</loc><lastmod>${TODAY}</lastmod></url>"
             done
             echo '</urlset>'
-          } > "$SITEMAP_PATH"
+          } > sitemap.xml
 
-      - name: Commit generated files
+      - name: Commit and Push
         run: |
-          git config user.name  "github-actions[bot]"
+          git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          git add projects.json .github/workflows/sitemap.xml
-          
-          git diff --cached --quiet || git commit -m "chore: auto-update manifest + sitemap [skip ci]"
-          git push
+          git add projects.json sitemap.xml
+          git diff --cached --quiet || (git commit -m "chore: update manifest and sitemap [skip ci]" && git push)
