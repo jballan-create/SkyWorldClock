@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  workflows: write  # This is required to push files to .github/workflows/
 
 jobs:
   build-manifest:
@@ -59,7 +60,6 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Stage both files from their specific locations
           git add projects.json .github/workflows/sitemap.xml
           
           git diff --cached --quiet || git commit -m "chore: auto-update manifest + sitemap [skip ci]"
