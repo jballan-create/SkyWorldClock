@@ -1,6 +1,8 @@
 [
   { "file": "DigitalTerrarium.html", "name": "DigitalTerrarium" }
 ,
+  { "file": "DigitalTerrariumMutations.html", "name": "DigitalTerrariumMutations" }
+,
   { "file": "SkyWorldClock.html", "name": "SkyWorldClock" }
 ,
   { "file": "TieDye.html", "name": "TieDye" }
