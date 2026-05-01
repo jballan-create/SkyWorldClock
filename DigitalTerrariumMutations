@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digital Terrarium: Mutations</title>
+
+<style>
+:root {
+    --bg: #0f0f0f;
+    --panel: #1a1a1a;
+    --accent: #ffae00;
+    --text: #e0e0e0;
+    --flow-speed: 2s;
+    --entropy-color: #ff3300;
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Courier New', monospace;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    overflow-y: auto;
+    transition: background 0.5s ease;
+}
+
+header {
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--accent);
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    font-size: 11px;
+}
+
+#main-sim {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+}
+
+#visualizer {
+    background: var(--panel);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    align-items: center;
+    border: 1px solid #333;
+    height: 500px;
+}
+
+.node {
+    width: 100px;
+    height: 100px;
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-size: 10px;
+    background: rgba(0,0,0,0.8);
+    transition: all 0.3s ease;
+}
+
+.node.pulse {
+    transform: scale(1.1);
+    box-shadow: 0 0 20px var(--accent);
+}
+
+.pipe {
+    width: 2px;
+    height: 40px;
+    background: #333;
+    position: relative;
+    overflow: hidden;
+}
+
+.pipe::after {
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: 15px;
+    background: var(--accent);
+    animation: flow var(--flow-speed) linear infinite;
+}
+
+@keyframes flow {
+    from { top: -15px; }
+    to { top: 100%; }
+}
+
+#ledger {
+    background: var(--panel);
+    padding: 15px;
+    border-radius: 8px;
+    font-size: 11px;
+    height: 160px;
+    overflow-y: auto;
+    border: 1px solid #222;
+}
+
+.entry { margin-bottom: 5px; border-left: 2px solid var(--accent); padding-left: 5px; }
+.crit { color: var(--entropy-color); font-weight: bold; }
+.stat { color: var(--accent); }
+</style>
+</head>
+
+<body>
+
+<header>
+<div>PROTOCOL: <span id="sim-id" class="stat"></span></div>
+<div>TECH: <span id="v-num" class="stat">1.0</span></div>
+<div>ENERGY: <span id="energy">0</span></div>
+<div>ENTROPY: <span id="entropy">0</span>%</div>
+</header>
+
+<div id="main-sim">
+
+<div id="visualizer">
+    <div class="node" id="extract"><span>EXTRACTOR</span><b id="raw">0</b></div>
+    <div class="pipe"></div>
+    <div class="node" id="fab"><span>FAB</span><b id="refined">0</b></div>
+    <div class="pipe"></div>
+    <div class="node" id="humans"><span>POP</span><b id="pop">10</b></div>
+</div>
+
+<div id="ledger"></div>
+
+</div>
+
+<script>
+
+const SEED = "SYS-" + Math.floor(Math.random()*999);
+document.getElementById("sim-id").innerText = SEED;
+
+let state = {
+    v: 1.0,
+    energy: 120,
+    raw: 0,
+    refined: 0,
+    pop: 10,
+    entropy: 0,
+
+    extractorEff: 1.2,
+    fabEff: 1.0,
+    energyRecovery: 1.0,
+
+    innovationBuffer: 0,
+
+    patternGraph: { nodes: {} },
+
+    nodes: {
+        cooling: false,
+        storage: false,
+        ai: false
+    },
+
+    storageBuffer: { raw: 0, refined: 0 },
+
+    nodeStats: {
+        extractor: { eff: 1.2, load: 0, stress: 0, cooldown: 0 },
+        fab: { eff: 1.0, load: 0, stress: 0, cooldown: 0 },
+        humans: { eff: 1, load: 0, stress: 0, cooldown: 0 }
+    }
+};
+
+const ledger = document.getElementById("ledger");
+
+function log(msg, crit=false) {
+    const d = document.createElement("div");
+    d.className = crit ? "entry crit" : "entry";
+    d.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    ledger.prepend(d);
+}
+
+function capturePattern(type) {
+    if (!state.patternGraph.nodes[type]) {
+        state.patternGraph.nodes[type] = { count: 0 };
+        log("Pattern learned: " + type);
+    }
+    state.patternGraph.nodes[type].count++;
+    state.innovationBuffer += 0.2 * (1 + state.entropy/50);
+}
+
+function discoverNodes() {
+    if (!state.nodes.cooling && state.entropy > 70) {
+        state.nodes.cooling = true;
+        log("Node: Cooling Plant");
+    }
+    if (!state.nodes.storage && (state.raw > 20 || state.refined > 20)) {
+        state.nodes.storage = true;
+        log("Node: Storage");
+    }
+    if (!state.nodes.ai && state.v > 1.5 && state.entropy < 40) {
+        state.nodes.ai = true;
+        log("Node: AI Core");
+    }
+}
+
+function mutateNode(name) {
+    const node = state.nodeStats[name];
+    node.eff += 0.3;
+    node.stress *= 0.8;
+    log(name.toUpperCase() + " mutated");
+}
+
+function applyNodeStress() {
+    for (const n in state.nodeStats) {
+        const node = state.nodeStats[n];
+
+        node.stress += state.entropy * 0.01;
+
+        if (node.stress > 1.5 && Math.random() < 0.05) {
+            node.cooldown = 3;
+            log(n + " FAILED", true);
+        }
+
+        if (node.stress > 2.0 && Math.random() < 0.03) {
+            mutateNode(n);
+        }
+
+        if (node.cooldown > 0) {
+            node.cooldown--;
+            continue;
+        }
+
+        if (node.stress > 0.8) {
+            node.eff *= 0.97;
+        }
+    }
+}
+
+function evolve() {
+    const p = state.patternGraph.nodes;
+
+    if ((p.extract?.count || 0) > (p.fab?.count || 0)) {
+        state.extractorEff += 0.3;
+        log("Invention: Extraction Boost");
+    } else {
+        state.fabEff += 0.2;
+        log("Invention: Fabrication Boost");
+    }
+
+    state.v += 0.1;
+}
+
+function tick() {
+
+    // extraction
+    state.energy -= 2;
+    state.raw += state.extractorEff;
+    state.energy += state.energyRecovery;
+
+    capturePattern("extract");
+
+    // fabrication
+    if (state.raw > 5) {
+        state.raw -= 5;
+        state.refined += state.fabEff;
+        capturePattern("fab");
+    }
+
+    // population
+    if (state.refined > 10) {
+        state.refined -= 10;
+        state.pop++;
+        capturePattern("humans");
+    }
+
+    // entropy dynamics
+    state.entropy += state.extractorEff * 0.1;
+    state.entropy *= 0.995;
+
+    // AI loop
+    if (state.innovationBuffer > 5) {
+        evolve();
+        state.innovationBuffer = 0;
+    }
+
+    discoverNodes();
+    applyNodeStress();
+
+    updateUI();
+}
+
+function updateUI() {
+    document.getElementById("energy").innerText = Math.floor(state.energy);
+    document.getElementById("entropy").innerText = Math.floor(state.entropy);
+    document.getElementById("raw").innerText = state.raw.toFixed(1);
+    document.getElementById("refined").innerText = Math.floor(state.refined);
+    document.getElementById("pop").innerText = state.pop;
+    document.getElementById("v-num").innerText = state.v.toFixed(1);
+}
+
+setInterval(tick, 1000);
+
+</script>
+
+</body>
+</html>
