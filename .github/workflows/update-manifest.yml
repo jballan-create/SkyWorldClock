@@ -1,4 +1,4 @@
-name: Update Project Manifest
+Name: Update Project Manifest
 
 on:
   push:
@@ -19,8 +19,9 @@ jobs:
         run: |
           EXCLUDE=("index.html" "404.html" "backupoldindex.html")
           DOMAIN="https://raidio.org"
+          SITEMAP_PATH=".github/workflows/sitemap.xml"
 
-          # ── projects.json ──────────────────────────────────────────
+          # ── projects.json (STAYS IN ROOT) ──────────────────────────
           echo "[" > projects.json
           first=true
           for f in *.html; do
@@ -36,7 +37,7 @@ jobs:
           done
           echo "]" >> projects.json
 
-          # ── sitemap.xml ────────────────────────────────────────────
+          # ── sitemap.xml (MOVED TO .github/workflows/) ──────────────
           TODAY=$(date -u +%Y-%m-%d)
           {
             echo '<?xml version="1.0" encoding="UTF-8"?>'
@@ -51,17 +52,20 @@ jobs:
               echo "  <url><loc>${DOMAIN}/${f}</loc><lastmod>${TODAY}</lastmod></url>"
             done
             echo '</urlset>'
-          } > sitemap.xml
+          } > "$SITEMAP_PATH"
 
           echo "── projects.json ──"
           cat projects.json
           echo "── sitemap.xml ──"
-          cat sitemap.xml
+          cat "$SITEMAP_PATH"
 
       - name: Commit generated files
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add projects.json sitemap.xml
+          
+          # Add the root file and the workflow-nested file
+          git add projects.json .github/workflows/sitemap.xml
+          
           git diff --cached --quiet || git commit -m "chore: auto-update manifest + sitemap [skip ci]"
           git push
